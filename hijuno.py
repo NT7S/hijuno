@@ -99,24 +99,28 @@ def id(call):
 	# Parse each figure in the callsign
 	for ch in call:
 		# Get the representation of each character and parse dits and dahs
-		morsechar = MORSECHAR[ord(ch) - MORSE_CHAR_START]
-		while(morsechar != 0b10000000):
-			# If MSB is a 1, send a dah
-			if(morsechar & 0b10000000 == 0b10000000):
-				ser.setRTS(True)
-				time.sleep(ditlength(ID_WPM) * 3)
-				ser.setRTS(False)
-			# Otherwise send a dit
-			else:
-				ser.setRTS(True)
+		morse = MORSECHAR[ord(ch) - MORSE_CHAR_START]
+		if(morse == 0b11111111):
+			# If a SPACE, delay for a word space (7 dit length)
+			time.sleep(ditlength(ID_WPM) * 7)
+		else:
+			while(morse != 0b10000000):
+				# If MSB is a 1, send a dah
+				if(morse & 0b10000000 == 0b10000000):
+					ser.setRTS(True)
+					time.sleep(ditlength(ID_WPM) * 3)
+					ser.setRTS(False)
+				# Otherwise send a dit
+				else:
+					ser.setRTS(True)
+					time.sleep(ditlength(ID_WPM))
+					ser.setRTS(False)
+				# Now rotate the last element out of the character
+				morse = (morse & 0b01111111) << 1
+				# And wait for a dit
 				time.sleep(ditlength(ID_WPM))
-				ser.setRTS(False)
-			# Now rotate the last element out of the character
-			morsechar = (morsechar & 0b01111111) << 1
-			# And wait for a dit
-			time.sleep(ditlength(ID_WPM))
-		# Wait for a dah in between characters
-		time.sleep(ditlength(ID_WPM) * 3)
+			# Wait for a dah in between characters
+			time.sleep(ditlength(ID_WPM) * 3)
 	return
 
 def ditlength(wpm):
@@ -126,7 +130,7 @@ def ditlength(wpm):
 try:
 	ser = serial.Serial(DEVICE, BAUD)
 except:
-	print 'Cannot open serial port: ', sys.exc_info()[0]
+	print 'Cannot open serial port'
 	sys.exit(0)
 
 # Main processing loop
